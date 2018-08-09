@@ -1,0 +1,2 @@
+# pemula
+pendatang baru

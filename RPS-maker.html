@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator RPS OBE Otomatis</title>
+    <!-- Font Awesome 6 (Free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Marked.js untuk render Markdown ke HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* ---------- GLOBAL ---------- */
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body {
+            background: #f4f7fc;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        /* ---------- STEP INDICATOR ---------- */
+        .step-indicator {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        .dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #555;
+            transition: 0.2s;
+        }
+        .dot.active {
+            background: #2563eb;
+            color: white;
+        }
+        .dot.done {
+            background: #16a34a;
+            color: white;
+        }
+
+        /* ---------- STEPS ---------- */
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin: 15px 0 5px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        button {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            background: #e5e7eb;
+            color: #333;
+            transition: 0.2s;
+        }
+        button.primary {
+            background: #2563eb;
+            color: white;
+        }
+        button.primary:hover {
+            background: #1d4ed8;
+        }
+        button.success {
+            background: #16a34a;
+            color: white;
+        }
+        button.success:hover {
+            background: #15803d;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .skip-note {
+            background: #fef9c3;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        h1 i, h3 i, .skip-note i, button i {
+            margin-right: 8px;
+        }
+
+        /* ---------- LOADING ---------- */
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ---------- RESULT / RENDERED OUTPUT ---------- */
+        #result {
+            margin-top: 30px;
+            border-top: 2px solid #ddd;
+            padding-top: 20px;
+            display: none;
+        }
+
+        #renderedOutput {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            max-height: 750px;
+            overflow-y: auto;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            line-height: 1.5;
+        }
+
+        #renderedOutput h1 {
+            font-size: 18pt;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 0;
+        }
+        #renderedOutput h2 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+        #renderedOutput h3 {
+            font-size: 13pt;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 6px;
+        }
+        #renderedOutput h4 {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+
+        /* ===== TABEL BERGARIS TEBAL (SIAP WORD) ===== */
+        #renderedOutput table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            font-size: 11pt;
+        }
+        #renderedOutput th,
+        #renderedOutput td {
+            border: 1px solid #000000;  /* GARIS HITAM TEBAL */
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        #renderedOutput th {
+            background: #e9ecef;
+            font-weight: 700;
+            text-align: center;
+        }
+        /* ===== END TABEL ===== */
+
+        #renderedOutput ul,
+        #renderedOutput ol {
+            padding-left: 25px;
+            margin: 8px 0;
+        }
+        #renderedOutput blockquote {
+            border-left: 4px solid #2563eb;
+            margin-left: 0;
+            padding-left: 15px;
+            color: #333;
+        }
+        #renderedOutput strong {
+            font-weight: 700;
+        }
+
+        /* tombol aksi hasil */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+
+        /* ---------- RESPONSIF ---------- */
+        @media (max-width: 640px) {
+            .container { padding: 16px; }
+            button { padding: 10px 18px; }
+            #renderedOutput { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="text-align:center;"><i class="fas fa-file-lines"></i>Generator RPS OBE <br>FUSPI UIN BANTEN</nr></h1>
+
+    <!-- STEP INDICATOR -->
+    <div class="step-indicator">
+        <div class="dot active" id="d1">1</div>
+        <div class="dot" id="d2">2</div>
+        <div class="dot" id="d3">3</div>
+    </div>
+
+    <!-- ========== STEP 1 ========== -->
+    <div id="step1" class="step active">
+        <h3><i class="fas fa-tag"></i> Identitas Mata Kuliah</h3>
+        <label>Nama Mata Kuliah</label>
+        <input type="text" id="mk" placeholder="Contoh: Ilmu Rijal Hadis">
+        <label>Program Studi (Prodi)</label>
+        <input type="text" id="prodi" placeholder="Contoh: Ilmu Hadis">
+        <div class="btn-group">
+            <span></span>
+            <button class="primary" onclick="nextStep(2)"><i class="fas fa-arrow-right"></i> Lanjut</button>
+        </div>
+    </div>
+
+    <!-- ========== STEP 2 ========== -->
+    <div id="step2" class="step">
+        <h3><i class="fas fa-bullseye"></i> Visi, Profil Lulusan &amp; CPL</h3>
+        <p style="color:#555; font-size:14px;">Isi jika ada, atau centang kotak di bawah untuk melewati (AI akan generate otomatis).</p>
+        <textarea id="visi_cpl" placeholder="Isi Visi, Profil Lulusan, dan CPL di sini..."></textarea>
+        <div style="margin-top:10px;">
+            <input type="checkbox" id="skip_check" value="skip">
+            <label for="skip_check" style="display:inline; font-weight:normal;"> Lewati (Auto-Generate oleh AI)</label>
+        </div>
+        <div class="btn-group">
+            <button onclick="prevStep(1)"><i class="fas fa-arrow-left"></i> Kembali</button>
+            <button class="primary" onclick="nextStep(3)"><i class="fas fa-arrow-right"></i> Lanjut</button>
+        </div>
+    </div>
+
+    <!-- ========== STEP 3 ========== -->
+    <div id="step3" class="step">
+        <h3><i class="fas fa-list"></i> Daftar Pokok Bahasan (WAJIB)</h3>
+        <p style="color:#555; font-size:14px;">Tuliskan semua materi perkuliahan (pisahkan dengan newline/enter).</p>
+        <textarea id="topics" placeholder="1. Pengertian Rijal&#10;2. Sejarah Kodifikasi&#10;3. Metode Jarh wa Ta'dil&#10;dst..."></textarea>
+        <div class="skip-note">
+            <i class="fas fa-bolt"></i> AI akan memetakan daftar ini ke 13 pertemuan efektif (splitting jika &lt;13, merging jika &gt;13).
+        </div>
+        <div class="btn-group">
+            <button onclick="prevStep(2)"><i class="fas fa-arrow-left"></i> Kembali</button>
+            <button class="primary" id="genBtn" onclick="generateRPS()"><i class="fas fa-rocket"></i> Generate RPS</button>
+        </div>
+    </div>
+
+    <!-- ========== LOADING ========== -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <p style="margin-top:15px; color:#2563eb;"><i class="fas fa-spinner fa-spin"></i> AI sedang menyusun RPS OBE lengkap (butuh 15-30 detik)...</p>
+    </div>
+
+    <!-- ========== RESULT ========== -->
+    <div id="result">
+        <h3><i class="fas fa-check-circle" style="color:#16a34a;"></i> RPS Selesai!</h3>
+        <div class="action-buttons">
+            <button class="success" onclick="copyRenderedToWord()"><i class="fas fa-file-word"></i> Salin ke Word (Rendered)</button>
+            <button onclick="copyRawMarkdown()"><i class="fas fa-code"></i> Salin Markdown (Raw)</button>
+            <button class="primary" onclick="downloadMarkdown()"><i class="fas fa-download"></i> Unduh .md</button>
+        </div>
+        <div id="renderedOutput"></div>
+        <!-- Tempat menyimpan markdown raw -->
+        <textarea id="rawMarkdownStorage" style="display:none;"></textarea>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    //  NAVIGASI STEP
+    // ============================================================
+    let currentStep = 1;
+    function updateDots() {
+        for (let i = 1; i <= 3; i++) {
+            const d = document.getElementById('d' + i);
+            d.classList.remove('active', 'done');
+            if (i < currentStep) d.classList.add('done');
+            else if (i === currentStep) d.classList.add('active');
+        }
+        document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+        document.getElementById('step' + currentStep).classList.add('active');
+    }
+    function nextStep(n) { currentStep = n; updateDots(); }
+    function prevStep(n) { currentStep = n; updateDots(); }
+
+    // ============================================================
+    //  GENERATE RPS (panggil API)
+    // ============================================================
+    async function generateRPS() {
+        const mk = document.getElementById('mk').value.trim();
+        const prodi = document.getElementById('prodi').value.trim();
+        const visi_cpl = document.getElementById('visi_cpl').value.trim();
+        const skip = document.getElementById('skip_check').checked;
+        const topicsRaw = document.getElementById('topics').value.trim();
+
+        if (!mk || !prodi) { alert('Nama MK dan Prodi wajib diisi!'); return; }
+        if (!topicsRaw) { alert('Daftar Pokok Bahasan wajib diisi!'); return; }
+
+        document.getElementById('genBtn').disabled = true;
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('result').style.display = 'none';
+
+        const payload = {
+            mk,
+            prodi,
+            visi_cpl: skip ? 'LEWATKAN' : visi_cpl,
+            topics: topicsRaw.split('\n').filter(t => t.trim() !== '')
+        };
+
+        try {
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            // Simpan markdown raw
+            const markdown = data.markdown;
+            document.getElementById('rawMarkdownStorage').value = markdown;
+
+            // Render ke HTML dengan marked.js
+            const renderedHTML = marked.parse(markdown);
+            document.getElementById('renderedOutput').innerHTML = renderedHTML;
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result').style.display = 'block';
+        } catch (error) {
+            alert('Terjadi kesalahan: ' + error.message);
+            document.getElementById('loading').style.display = 'none';
+        } finally {
+            document.getElementById('genBtn').disabled = false;
+        }
+    }
+
+    // ============================================================
+    //  COPY RENDERED ke WORD (membawa gaya tabel)
+    // ============================================================
+    function copyRenderedToWord() {
+        const content = document.getElementById('renderedOutput').innerHTML;
+        // Ambil semua style dari halaman + tambahan khusus untuk Word
+        const styles = document.querySelector('style').innerHTML;
+        const html = `
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>${styles}</style>
+                </head>
+                <body>
+                    ${content}
+                </body>
+            </html>
+        `;
+
+        // Gunakan Clipboard API (HTML)
+        if (navigator.clipboard && window.ClipboardItem) {
+            const blob = new Blob([html], { type: 'text/html' });
+            const item = new ClipboardItem({ 'text/html': blob });
+            navigator.clipboard.write([item])
+                .then(() => alert('✅ HTML berhasil disalin! Buka Word, tekan Ctrl+V (Paste).'))
+                .catch(() => fallbackCopy(html));
+        } else {
+            fallbackCopy(html);
+        }
+    }
+
+    function fallbackCopy(html) {
+        // Fallback: textarea
+        const temp = document.createElement('textarea');
+        temp.value = html;
+        document.body.appendChild(temp);
+        temp.select();
+        try {
+            document.execCommand('copy');
+            alert('✅ Konten disalin! Buka Word dan Paste (Ctrl+V).');
+        } catch (e) {
+            alert('Gagal menyalin otomatis. Silakan seleksi area hasil, copy, lalu paste ke Word.');
+        }
+        document.body.removeChild(temp);
+    }
+
+    // ============================================================
+    //  COPY MARKDOWN RAW
+    // ============================================================
+    function copyRawMarkdown() {
+        const text = document.getElementById('rawMarkdownStorage').value;
+        if (!text) { alert('Tidak ada data.'); return; }
+        navigator.clipboard.writeText(text)
+            .then(() => alert('✅ Markdown raw berhasil disalin!'))
+            .catch(() => alert('Gagal menyalin.'));
+    }
+
+    // ============================================================
+    //  DOWNLOAD .md
+    // ============================================================
+    function downloadMarkdown() {
+        const text = document.getElementById('rawMarkdownStorage').value;
+        if (!text) { alert('Tidak ada data.'); return; }
+        const mk = document.getElementById('mk').value.trim() || 'RPS';
+        const blob = new Blob([text], { type: 'text/markdown' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `RPS_${mk}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+</script>
+</body>
+</html>
